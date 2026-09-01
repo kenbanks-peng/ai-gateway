@@ -40,13 +40,13 @@ async function main(): Promise<void> {
   const service = new ServiceControl(paths.pidFile, paths.logFile);
   if (options.command === "stop") {
     const stopped = await service.stop();
-    console.log(stopped ? "AI Gateway stop signal sent." : "AI Gateway is not running.");
+    console.log(stopped ? "AI Gateway stopped." : "AI Gateway is not running.");
     return;
   }
   if (options.command === "start" && process.env[SERVICE_CHILD_ENV] !== "1") {
     const script = process.argv[1];
     if (script === undefined) throw new Error("Cannot find the AI Gateway executable.");
-    const pid = await service.start({
+    const started = await service.start({
       executable: process.execPath,
       args: [
         ...process.execArgv,
@@ -61,7 +61,7 @@ async function main(): Promise<void> {
       ],
       environment: { ...process.env, [SERVICE_CHILD_ENV]: "1" },
     });
-    console.log(`AI Gateway started with PID ${pid}. Logs: ${paths.logFile}`);
+    console.log(`PID ${started.pid}. Logs: ${started.logFile}`);
     return;
   }
 

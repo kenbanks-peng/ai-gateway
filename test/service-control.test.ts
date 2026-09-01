@@ -9,11 +9,16 @@ test("registers the serving process and stops it with SIGTERM", async () => {
   const directory = await mkdtemp(join(tmpdir(), "ai-gateway-service-"));
   const pidFile = join(directory, "runtime", "gateway.pid");
   const signals: Array<NodeJS.Signals | 0> = [];
+  let running = true;
   const processes = {
     pid: 12345,
     kill(pid: number, signal: NodeJS.Signals | 0) {
       assert.equal(pid, 12345);
       signals.push(signal);
+      if (signal === "SIGTERM") running = false;
+      if (signal === 0 && !running) {
+        throw Object.assign(new Error("No such process"), { code: "ESRCH" });
+      }
       return true;
     },
   };
@@ -24,7 +29,7 @@ test("registers the serving process and stops it with SIGTERM", async () => {
   assert.equal(await readFile(pidFile, "utf8"), "12345\n");
   assert.equal((await stat(pidFile)).mode & 0o777, 0o600);
   assert.equal(await service.stop(), true);
-  assert.deepEqual(signals, [0, "SIGTERM"]);
+  assert.deepEqual(signals, [0, "SIGTERM", 0]);
 
   await service.unregister();
   await assert.rejects(readFile(pidFile, "utf8"), { code: "ENOENT" });

@@ -53,15 +53,17 @@ test("start creates a background service that stop terminates", { timeout: 5_000
   try {
     const started = await runCli(["start", "--port", "0"], environment);
     assert.equal(started.code, 0, started.stderr);
-    assert.match(started.stdout, /AI Gateway started with PID \d+\./);
 
     servicePid = Number.parseInt((await readFile(pidFile, "utf8")).trim(), 10);
+    const logFile = join(directory, `${servicePid}-gateway.log`);
+    assert.equal(started.stdout, `PID ${servicePid}. Logs: ${logFile}\n`);
+    await readFile(logFile, "utf8");
     assert.notEqual(servicePid, process.pid);
     process.kill(servicePid, 0);
 
     const stopped = await runCli(["stop"], environment);
     assert.equal(stopped.code, 0, stopped.stderr);
-    assert.match(stopped.stdout, /AI Gateway stop signal sent\./);
+    assert.equal(stopped.stdout, "AI Gateway stopped.\n");
     await waitForExit(servicePid);
   } finally {
     if (servicePid !== undefined) {

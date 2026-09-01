@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { constants } from "node:fs";
-import { open, rm } from "node:fs/promises";
-import { dirname } from "node:path";
+import { open, rename, rm } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { ensurePrivateDirectory, openPrivateFile } from "./private-files.js";
 
@@ -16,6 +16,11 @@ export interface ServiceCommand {
   readonly environment: NodeJS.ProcessEnv;
 }
 
+export interface StartedService {
+  readonly pid: number;
+  readonly logFile: string;
+}
+
 export class ServiceControl {
   constructor(
     readonly pidFile: string,
@@ -23,18 +28,23 @@ export class ServiceControl {
     private readonly processControl: ProcessControl = process,
   ) {}
 
-  async start(command: ServiceCommand): Promise<number> {
+  async start(command: ServiceCommand): Promise<StartedService> {
     await this.removeStalePid();
     await ensurePrivateDirectory(dirname(this.pidFile));
     await ensurePrivateDirectory(dirname(this.logFile));
 
+    const stagingLogFile = join(
+      dirname(this.logFile),
+      `.${basename(this.logFile)}.${this.processControl.pid}.${Date.now()}.tmp`,
+    );
     const log = await open(
-      this.logFile,
-      constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_NOFOLLOW,
+      stagingLogFile,
+      constants.O_EXCL | constants.O_CREAT | constants.O_WRONLY | constants.O_NOFOLLOW,
       0o600,
     );
     let child: ChildProcess | undefined;
     let childPid: number | undefined;
+    let activeLogFile = stagingLogFile;
     try {
       child = spawn(command.executable, [...command.args], {
         detached: true,
@@ -45,17 +55,20 @@ export class ServiceControl {
       childPid = child.pid;
       if (childPid === undefined) throw new Error("The service process did not have a PID.");
 
+      activeLogFile = logFileForPid(this.logFile, childPid);
+      await rename(stagingLogFile, activeLogFile);
       await this.register(childPid);
       child.unref();
       await waitForReady(child);
-      return childPid;
+      return { pid: childPid, logFile: activeLogFile };
     } catch (error) {
       if (childPid !== undefined) {
         try { this.processControl.kill(childPid, "SIGTERM"); } catch {}
         await this.unregister(childPid);
       }
+      await rm(stagingLogFile, { force: true });
       const reason = error instanceof Error ? error.message : "unknown startup error";
-      throw new Error(`AI Gateway did not start: ${reason} See ${this.logFile}.`);
+      throw new Error(`AI Gateway did not start: ${reason} See ${activeLogFile}.`);
     } finally {
       await log.close();
     }
@@ -93,7 +106,22 @@ export class ServiceControl {
     }
 
     this.processControl.kill(pid, "SIGTERM");
+    await this.waitForStopped(pid);
     return true;
+  }
+
+  private async waitForStopped(pid: number): Promise<void> {
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+      const registeredPid = await this.readPid();
+      if (registeredPid !== pid) return;
+      if (!this.isRunning(pid)) {
+        await this.unregister(pid);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error(`AI Gateway with PID ${pid} did not stop within 10 seconds.`);
   }
 
   private async removeStalePid(): Promise<void> {
@@ -130,6 +158,10 @@ export class ServiceControl {
       throw error;
     }
   }
+}
+
+function logFileForPid(logFile: string, pid: number): string {
+  return join(dirname(logFile), `${pid}-${basename(logFile)}`);
 }
 
 function waitForSpawn(child: ChildProcess): Promise<void> {
