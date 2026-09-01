@@ -24,10 +24,10 @@ The login command stores OAuth data in `$XDG_STATE_HOME/ai-gateway/auth.json` wi
 ## Start the gateway
 
 ```sh
-ai-gateway serve
+ai-gateway start
 ```
 
-The `serve` command starts the gateway as a background service and returns after it is ready. Use `ai-gateway stop` to stop it. Service logs are in `$XDG_STATE_HOME/ai-gateway/gateway.log` by default. Use `ai-gateway status`, `ai-gateway models`, or `ai-gateway logout` for account and model information.
+The `start` command starts the gateway as a background service and returns after it is ready. Use `ai-gateway stop` to stop it. Service logs are in `$XDG_STATE_HOME/ai-gateway/gateway.log` by default. Use `ai-gateway status`, `ai-gateway models`, or `ai-gateway logout` for account and model information.
 
 ## Connect Crush
 

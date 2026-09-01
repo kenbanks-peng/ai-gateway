@@ -19,7 +19,7 @@ const PROVIDER_ID = "openai-codex";
 const SERVICE_CHILD_ENV = "AI_GATEWAY_SERVICE_CHILD";
 
 interface CliOptions {
-  command: "serve" | "stop" | "login" | "logout" | "status" | "models" | "help";
+  command: "start" | "stop" | "login" | "logout" | "status" | "models" | "help";
   host: string;
   port: number;
   authFile: string;
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     console.log(stopped ? "AI Gateway stop signal sent." : "AI Gateway is not running.");
     return;
   }
-  if (options.command === "serve" && process.env[SERVICE_CHILD_ENV] !== "1") {
+  if (options.command === "start" && process.env[SERVICE_CHILD_ENV] !== "1") {
     const script = process.argv[1];
     if (script === undefined) throw new Error("Cannot find the AI Gateway executable.");
     const pid = await service.start({
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
       args: [
         ...process.execArgv,
         script,
-        "serve",
+        "start",
         "--host",
         options.host,
         "--port",
@@ -188,14 +188,14 @@ function openBrowser(url: string): void {
 }
 
 function parseArgs(args: string[], defaultAuthFile: string): CliOptions {
-  let command: CliOptions["command"] = args.length === 0 ? "help" : "serve";
+  let command: CliOptions["command"] = args.length === 0 ? "help" : "start";
   let host = "127.0.0.1";
   let port = 8787;
   let authFile = defaultAuthFile;
   let index = 0;
   if (args[0] && !args[0].startsWith("-")) {
     const value = args[0];
-    if (!["serve", "stop", "login", "logout", "status", "models", "help"].includes(value)) {
+    if (!["start", "stop", "login", "logout", "status", "models", "help"].includes(value)) {
       throw new Error(`Unknown command '${value}'.`);
     }
     command = value as CliOptions["command"];
@@ -235,13 +235,13 @@ function printHelp(): void {
 
 Usage:
   ai-gateway login [--auth-file PATH]
-  ai-gateway serve [--host HOST] [--port PORT] [--auth-file PATH]
+  ai-gateway start [--host HOST] [--port PORT] [--auth-file PATH]
   ai-gateway stop
   ai-gateway status [--auth-file PATH]
   ai-gateway models
   ai-gateway logout [--auth-file PATH]
 
-The serve command binds to 127.0.0.1:8787 by default.
+The start command binds to 127.0.0.1:8787 by default.
 Credentials use $XDG_STATE_HOME/ai-gateway/auth.json by default.
 Runtime files use $XDG_RUNTIME_DIR/ai-gateway by default.`);
 }

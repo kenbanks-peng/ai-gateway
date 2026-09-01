@@ -40,7 +40,7 @@ async function waitForExit(pid: number, timeoutMs = 2_000): Promise<void> {
   throw new Error(`Process ${pid} did not exit.`);
 }
 
-test("serve starts a background service that stop terminates", { timeout: 5_000 }, async () => {
+test("start creates a background service that stop terminates", { timeout: 5_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "ai-gateway-cli-"));
   const pidFile = join(directory, "gateway.pid");
   const environment = {
@@ -51,7 +51,7 @@ test("serve starts a background service that stop terminates", { timeout: 5_000 
   let servicePid: number | undefined;
 
   try {
-    const started = await runCli(["serve", "--port", "0"], environment);
+    const started = await runCli(["start", "--port", "0"], environment);
     assert.equal(started.code, 0, started.stderr);
     assert.match(started.stdout, /AI Gateway started with PID \d+\./);
 
