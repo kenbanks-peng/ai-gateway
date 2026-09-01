@@ -56,7 +56,10 @@ test("start creates a background service that stop terminates", { timeout: 5_000
 
     servicePid = Number.parseInt((await readFile(pidFile, "utf8")).trim(), 10);
     const logFile = join(directory, `${servicePid}-gateway.log`);
-    assert.equal(started.stdout, `PID ${servicePid}. Logs: ${logFile}\n`);
+    assert.equal(
+      started.stdout,
+      `PID ${servicePid}. Logs:\n $XDG_STATE_HOME/ai-gateway/${servicePid}-gateway.log\n`,
+    );
     await readFile(logFile, "utf8");
     assert.notEqual(servicePid, process.pid);
     process.kill(servicePid, 0);
