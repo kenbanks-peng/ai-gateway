@@ -61,7 +61,7 @@ async function main(): Promise<void> {
       ],
       environment: { ...process.env, [SERVICE_CHILD_ENV]: "1" },
     });
-    console.log(`PID ${started.pid}. Logs:\n $XDG_STATE_HOME/ai-gateway/${started.pid}-gateway.log`);
+    console.log(`PID ${started.pid}. Logs: $XDG_STATE_HOME/ai-gateway/${started.pid}-gateway.log`);
     return;
   }
 
