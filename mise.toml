@@ -1,0 +1,14 @@
+[tasks.start]
+description = "Build and start AI Gateway in the background"
+tools = { node = "lts" }
+run = '''
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ai-gateway"
+mkdir -p "$state_dir"
+chmod 700 "$state_dir"
+npm run build && (nohup node "$PWD/dist/cli.js" serve > "$state_dir/gateway.log" 2>&1 &)
+'''
+
+[tasks.stop]
+description = "Stop the background AI Gateway"
+tools = { node = "lts" }
+run = 'node dist/cli.js stop'
