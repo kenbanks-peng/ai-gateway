@@ -1,10 +1,11 @@
 import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 
 const APPLICATION_DIRECTORY = "ai-gateway";
 
 export interface GatewayPaths {
   readonly authFile: string;
+  readonly logFile: string;
   readonly pidFile: string;
   readonly usesRuntimeFallback: boolean;
 }
@@ -22,15 +23,18 @@ export function resolveGatewayPaths(
     "auth.json",
   );
 
+  const logFile = nonEmpty(environment.AI_GATEWAY_LOG_FILE)
+    ?? join(dirname(authFile), "gateway.log");
   const pidOverride = nonEmpty(environment.AI_GATEWAY_PID_FILE);
   if (pidOverride !== undefined) {
-    return { authFile, pidFile: pidOverride, usesRuntimeFallback: false };
+    return { authFile, logFile, pidFile: pidOverride, usesRuntimeFallback: false };
   }
 
   const runtimeHome = xdgDirectory(environment.XDG_RUNTIME_DIR, "XDG_RUNTIME_DIR");
   if (runtimeHome !== undefined) {
     return {
       authFile,
+      logFile,
       pidFile: join(runtimeHome, APPLICATION_DIRECTORY, "gateway.pid"),
       usesRuntimeFallback: false,
     };
@@ -38,6 +42,7 @@ export function resolveGatewayPaths(
 
   return {
     authFile,
+    logFile,
     pidFile: join(temporaryDirectory, runtimeFallbackName(), "gateway.pid"),
     usesRuntimeFallback: true,
   };

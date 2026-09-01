@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { closeSync, writeSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import {
   createModels,
@@ -15,6 +16,7 @@ import { ServiceControl } from "./service-control.js";
 import { resolveGatewayPaths } from "./xdg-paths.js";
 
 const PROVIDER_ID = "openai-codex";
+const SERVICE_CHILD_ENV = "AI_GATEWAY_SERVICE_CHILD";
 
 interface CliOptions {
   command: "serve" | "stop" | "login" | "logout" | "status" | "models" | "help";
@@ -35,10 +37,31 @@ async function main(): Promise<void> {
     console.warn("XDG_RUNTIME_DIR is not set; using a private temporary runtime directory.");
   }
 
-  const service = new ServiceControl(paths.pidFile);
+  const service = new ServiceControl(paths.pidFile, paths.logFile);
   if (options.command === "stop") {
     const stopped = await service.stop();
     console.log(stopped ? "AI Gateway stop signal sent." : "AI Gateway is not running.");
+    return;
+  }
+  if (options.command === "serve" && process.env[SERVICE_CHILD_ENV] !== "1") {
+    const script = process.argv[1];
+    if (script === undefined) throw new Error("Cannot find the AI Gateway executable.");
+    const pid = await service.start({
+      executable: process.execPath,
+      args: [
+        ...process.execArgv,
+        script,
+        "serve",
+        "--host",
+        options.host,
+        "--port",
+        String(options.port),
+        "--auth-file",
+        options.authFile,
+      ],
+      environment: { ...process.env, [SERVICE_CHILD_ENV]: "1" },
+    });
+    console.log(`AI Gateway started with PID ${pid}. Logs: ${paths.logFile}`);
     return;
   }
 
@@ -76,6 +99,7 @@ async function main(): Promise<void> {
     throw error;
   }
   console.log(`AI Gateway is listening on http://${formatHost(options.host)}:${options.port}/v1`);
+  signalReady();
 
   let closing = false;
   const close = async () => {
@@ -198,6 +222,12 @@ function requiredArgument(args: string[], index: number, option: string): string
 
 function formatHost(host: string): string {
   return host.includes(":") ? `[${host}]` : host;
+}
+
+function signalReady(): void {
+  if (process.env[SERVICE_CHILD_ENV] !== "1") return;
+  writeSync(3, "ready\n");
+  closeSync(3);
 }
 
 function printHelp(): void {

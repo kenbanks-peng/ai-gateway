@@ -11,6 +11,7 @@ test("uses XDG state and runtime directories", () => {
 
   assert.deepEqual(paths, {
     authFile: join("/state", "ai-gateway", "auth.json"),
+    logFile: join("/state", "ai-gateway", "gateway.log"),
     pidFile: join("/runtime", "ai-gateway", "gateway.pid"),
     usesRuntimeFallback: false,
   });
@@ -56,6 +57,7 @@ test("explicit file overrides take precedence over XDG directories", () => {
   });
 
   assert.equal(paths.authFile, "custom/auth.json");
+  assert.equal(paths.logFile, join("custom", "gateway.log"));
   assert.equal(paths.pidFile, "custom/gateway.pid");
   assert.equal(paths.usesRuntimeFallback, false);
 });

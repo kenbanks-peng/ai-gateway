@@ -17,7 +17,7 @@ test("registers the serving process and stops it with SIGTERM", async () => {
       return true;
     },
   };
-  const service = new ServiceControl(pidFile, processes);
+  const service = new ServiceControl(pidFile, join(directory, "gateway.log"), processes);
 
   await service.register();
 
@@ -40,7 +40,7 @@ test("reports no service for a stale PID file", async () => {
       throw Object.assign(new Error("No such process"), { code: "ESRCH" });
     },
   };
-  const service = new ServiceControl(pidFile, processes);
+  const service = new ServiceControl(pidFile, join(directory, "gateway.log"), processes);
 
   assert.equal(await service.stop(), false);
   await assert.rejects(readFile(pidFile, "utf8"), { code: "ENOENT" });
