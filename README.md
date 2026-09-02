@@ -29,6 +29,8 @@ ai-gateway start
 
 The `start` command starts the gateway as a background service and returns after it is ready. Use `ai-gateway stop` to stop it. Service logs are in `$XDG_STATE_HOME/ai-gateway/<PID>-gateway.log` by default. Use `ai-gateway status`, `ai-gateway models`, or `ai-gateway logout` for account and model information.
 
+Use `ai-gateway start debug` to append one JSON record per request to the service log. Each record contains the session ID, provider, model ID, requested reasoning effort, and the last 20 characters of the latest message. Debug mode is disabled by default.
+
 ## Connect Crush
 
 Add an `openai-compat` provider to Crush. Use a placeholder key because Crush requires a provider key, but the gateway ignores it.

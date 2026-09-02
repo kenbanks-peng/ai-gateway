@@ -4,6 +4,7 @@ import http, { type IncomingMessage, type ServerResponse } from "node:http";
 
 export interface GatewayModel {
   id: string;
+  provider?: string;
   created?: number;
 }
 
@@ -59,6 +60,7 @@ export interface Gateway {
 interface GatewayOptions {
   models: readonly GatewayModel[];
   upstream: UpstreamPort;
+  debug?: boolean;
 }
 
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
@@ -114,7 +116,8 @@ async function route(
     }
     if (request.method === "POST" && url.pathname === "/v1/chat/completions") {
       const body = validateChatRequest(await readJson(request));
-      if (!options.models.some((model) => model.id === body.model)) {
+      const model = options.models.find((candidate) => candidate.id === body.model);
+      if (!model) {
         return sendError(
           response,
           404,
@@ -123,7 +126,13 @@ async function route(
           "model_not_found",
         );
       }
-      return await completeChat(request, response, body, options.upstream);
+      return await completeChat(
+        request,
+        response,
+        body,
+        options.upstream,
+        options.debug ? { provider: model.provider ?? "openai-codex", model: model.id } : undefined,
+      );
     }
     sendError(response, 404, "invalid_request_error", "Route not found.", "not_found");
   } catch (error) {
@@ -148,6 +157,7 @@ async function completeChat(
   response: ServerResponse,
   request: ChatCompletionRequest,
   upstream: UpstreamPort,
+  debug?: { provider: string; model: string },
 ): Promise<void> {
   const controller = new AbortController();
   response.once("close", () => {
@@ -156,6 +166,7 @@ async function completeChat(
   const id = `chatcmpl-${randomUUID()}`;
   const created = Math.floor(Date.now() / 1000);
   const sessionId = getSessionId(incoming, id);
+  if (debug) writeDebugRecord(sessionId, request, debug);
   const events = upstream.generate(request, { signal: controller.signal, sessionId });
 
   if (request.stream) {
@@ -305,6 +316,37 @@ function openAIUsage(usage: GatewayUsage) {
 function getSessionId(request: IncomingMessage, fallback: string): string {
   const value = request.headers["x-session-id"] ?? request.headers["x-client-request-id"];
   return typeof value === "string" && value ? value : fallback;
+}
+
+function writeDebugRecord(
+  sessionId: string,
+  request: ChatCompletionRequest,
+  model: { provider: string; model: string },
+): void {
+  const record = {
+    session_id: sessionId,
+    provider: model.provider,
+    model: model.model,
+    reasoning_effort: request.reasoning_effort ?? null,
+    message: lastMessageText(request.messages),
+  };
+  console.log(JSON.stringify(record));
+}
+
+function lastMessageText(messages: unknown[]): string {
+  const message = messages[messages.length - 1];
+  if (!message || typeof message !== "object" || Array.isArray(message)) return "";
+  const content = (message as Record<string, unknown>).content;
+  const text = typeof content === "string"
+    ? content
+    : Array.isArray(content)
+      ? content.map((part) => {
+          if (!part || typeof part !== "object" || Array.isArray(part)) return "";
+          const item = part as Record<string, unknown>;
+          return item.type === "text" && typeof item.text === "string" ? item.text : "";
+        }).join("")
+      : "";
+  return Array.from(text).slice(-20).join("");
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {

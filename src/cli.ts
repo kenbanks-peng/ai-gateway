@@ -23,6 +23,7 @@ interface CliOptions {
   host: string;
   port: number;
   authFile: string;
+  debug: boolean;
 }
 
 async function main(): Promise<void> {
@@ -56,6 +57,7 @@ async function main(): Promise<void> {
         options.host,
         "--port",
         String(options.port),
+        ...(options.debug ? ["debug"] : []),
         "--auth-file",
         options.authFile,
       ],
@@ -88,8 +90,9 @@ async function main(): Promise<void> {
   }
 
   const gateway = createGateway({
-    models: runtime.models.map((model) => ({ id: model.id })),
+    models: runtime.models.map((model) => ({ id: model.id, provider: model.provider })),
     upstream: new PiCodexUpstream(runtime),
+    debug: options.debug,
   });
   await service.register();
   try {
@@ -192,6 +195,7 @@ function parseArgs(args: string[], defaultAuthFile: string): CliOptions {
   let host = "127.0.0.1";
   let port = 8787;
   let authFile = defaultAuthFile;
+  let debug = false;
   let index = 0;
   if (args[0] && !args[0].startsWith("-")) {
     const value = args[0];
@@ -204,14 +208,17 @@ function parseArgs(args: string[], defaultAuthFile: string): CliOptions {
   for (; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--help" || argument === "-h") command = "help";
-    else if (argument === "--host") host = requiredArgument(args, ++index, "--host");
+    else if (argument === "debug") {
+      if (command !== "start") throw new Error("The 'debug' option is only valid with 'start'.");
+      debug = true;
+    } else if (argument === "--host") host = requiredArgument(args, ++index, "--host");
     else if (argument === "--port") {
       port = Number.parseInt(requiredArgument(args, ++index, "--port"), 10);
       if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("Port must be from 0 to 65535.");
     } else if (argument === "--auth-file") authFile = requiredArgument(args, ++index, "--auth-file");
     else throw new Error(`Unknown option '${argument}'.`);
   }
-  return { command, host, port, authFile };
+  return { command, host, port, authFile, debug };
 }
 
 function requiredArgument(args: string[], index: number, option: string): string {
@@ -235,7 +242,7 @@ function printHelp(): void {
 
 Usage:
   ai-gateway login [--auth-file PATH]
-  ai-gateway start [--host HOST] [--port PORT] [--auth-file PATH]
+  ai-gateway start [debug] [--host HOST] [--port PORT] [--auth-file PATH]
   ai-gateway stop
   ai-gateway status [--auth-file PATH]
   ai-gateway models

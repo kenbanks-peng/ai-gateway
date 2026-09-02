@@ -21,10 +21,11 @@ function fakeUpstream(events: GatewayEvent[]): UpstreamPort {
   };
 }
 
-async function start(events: GatewayEvent[]) {
+async function start(events: GatewayEvent[], debug = false) {
   const gateway = createGateway({
-    models: [{ id: "gpt-test", created: 1 }],
+    models: [{ id: "gpt-test", provider: "openai-codex", created: 1 }],
     upstream: fakeUpstream(events),
+    debug,
   });
   servers.push(gateway);
   await gateway.listen({ host: "127.0.0.1", port: 0 });
@@ -47,6 +48,34 @@ test("lists the Codex models through the OpenAI models interface", async () => {
         owned_by: "openai-codex",
       },
     ],
+  });
+});
+
+test("writes request metadata in debug mode without the full message", async () => {
+  const baseUrl = await start([{ type: "done", finishReason: "stop" }], true);
+  const records: string[] = [];
+  const originalLog = console.log;
+  console.log = (...values: unknown[]) => records.push(String(values[0]));
+  try {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-session-id": "session-1" },
+      body: JSON.stringify({
+        model: "gpt-test",
+        reasoning_effort: "high",
+        messages: [{ role: "user", content: "123456789012345678901234" }],
+      }),
+    });
+    assert.equal(response.status, 200);
+  } finally {
+    console.log = originalLog;
+  }
+  assert.deepEqual(JSON.parse(records[0] ?? ""), {
+    session_id: "session-1",
+    provider: "openai-codex",
+    model: "gpt-test",
+    reasoning_effort: "high",
+    message: "56789012345678901234",
   });
 });
 
