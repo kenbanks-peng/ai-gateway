@@ -51,7 +51,7 @@ test("lists the Codex models through the OpenAI models interface", async () => {
   });
 });
 
-test("writes request metadata in debug mode without the full message", async () => {
+test("writes the full client request in debug mode", async () => {
   const baseUrl = await start([{ type: "done", finishReason: "stop" }], true);
   const records: string[] = [];
   const originalLog = console.log;
@@ -70,13 +70,18 @@ test("writes request metadata in debug mode without the full message", async () 
   } finally {
     console.log = originalLog;
   }
-  assert.deepEqual(JSON.parse(records[0] ?? ""), {
-    session_id: "session-1",
-    provider: "openai-codex",
-    model: "gpt-test",
-    reasoning_effort: "high",
-    message: "56789012345678901234",
-  });
+  const record = JSON.parse(records[0] ?? "");
+  assert.equal(record.session_id, "session-1");
+  assert.equal(record.provider, "openai-codex");
+  assert.equal(record.model, "gpt-test");
+  assert.equal(record.request.body.reasoning_effort, "high");
+  assert.equal(record.request.body.foo, undefined);
+  assert.deepEqual(record.request.body.messages, [
+    { role: "user", content: "123456789012345678901234" },
+  ]);
+  assert.equal(record.request.method, "POST");
+  assert.equal(record.request.url, "/v1/chat/completions");
+  assert.equal(record.request.headers["x-session-id"], "session-1");
 });
 
 test("returns a non-streamed chat completion with text, tool calls, and usage", async () => {

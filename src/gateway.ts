@@ -166,7 +166,7 @@ async function completeChat(
   const id = `chatcmpl-${randomUUID()}`;
   const created = Math.floor(Date.now() / 1000);
   const sessionId = getSessionId(incoming, id);
-  if (debug) writeDebugRecord(sessionId, request, debug);
+  if (debug) writeDebugRecord(sessionId, incoming, request, debug);
   const events = upstream.generate(request, { signal: controller.signal, sessionId });
 
   if (request.stream) {
@@ -320,33 +320,24 @@ function getSessionId(request: IncomingMessage, fallback: string): string {
 
 function writeDebugRecord(
   sessionId: string,
-  request: ChatCompletionRequest,
+  incoming: IncomingMessage,
+  body: ChatCompletionRequest,
   model: { provider: string; model: string },
 ): void {
   const record = {
     session_id: sessionId,
     provider: model.provider,
     model: model.model,
-    reasoning_effort: request.reasoning_effort ?? null,
-    message: lastMessageText(request.messages),
+    request: {
+      method: incoming.method,
+      url: incoming.url,
+      http_version: incoming.httpVersion,
+      headers: incoming.headers,
+      raw_headers: incoming.rawHeaders,
+      body,
+    },
   };
   console.log(JSON.stringify(record));
-}
-
-function lastMessageText(messages: unknown[]): string {
-  const message = messages[messages.length - 1];
-  if (!message || typeof message !== "object" || Array.isArray(message)) return "";
-  const content = (message as Record<string, unknown>).content;
-  const text = typeof content === "string"
-    ? content
-    : Array.isArray(content)
-      ? content.map((part) => {
-          if (!part || typeof part !== "object" || Array.isArray(part)) return "";
-          const item = part as Record<string, unknown>;
-          return item.type === "text" && typeof item.text === "string" ? item.text : "";
-        }).join("")
-      : "";
-  return Array.from(text).slice(-20).join("");
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
