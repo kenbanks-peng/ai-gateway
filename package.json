@@ -11,11 +11,6 @@
     "README.md",
     "LICENSE"
   ],
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/**/*.test.ts"
-  },
   "engines": {
     "node": ">=22.19.0"
   },

@@ -1,3 +1,18 @@
+[tasks.build]
+description = "Build AI Gateway"
+tools = { node = "lts" }
+run = "tsc -p tsconfig.json"
+
+[tasks.check]
+description = "Type-check AI Gateway"
+tools = { node = "lts" }
+run = "tsc -p tsconfig.json --noEmit"
+
+[tasks.test]
+description = "Run the test suite"
+tools = { node = "lts" }
+run = "tsx --test test/**/*.test.ts"
+
 [tasks.start]
 description = "Build and start AI Gateway in the background"
 tools = { node = "lts" }
@@ -5,7 +20,7 @@ run = '''
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ai-gateway"
 mkdir -p "$state_dir"
 chmod 700 "$state_dir"
-npm run build && (nohup node "$PWD/dist/cli.js" serve > "$state_dir/gateway.log" 2>&1 &)
+mise run build && (nohup node "$PWD/dist/cli.js" serve > "$state_dir/gateway.log" 2>&1 &)
 '''
 
 [tasks.stop]
