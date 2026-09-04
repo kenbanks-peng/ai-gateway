@@ -1,5 +1,11 @@
+[tasks.install]
+description = "Install dependencies"
+tools = { bun = "latest" }
+run = "bun install"
+
 [tasks.build]
 description = "Build AI Gateway"
+depends = ["install"]
 tools = { node = "lts" }
 run = "tsc -p tsconfig.json"
 
