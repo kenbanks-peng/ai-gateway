@@ -4,9 +4,10 @@
   "description": "Local OpenAI-compatible gateway for ChatGPT Codex subscription OAuth",
   "type": "module",
   "bin": {
-    "ai-gateway": "./dist/cli.js"
+    "ai-gateway": "./bin/ai-gateway"
   },
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"
