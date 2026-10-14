@@ -7,17 +7,17 @@ run = "bun install"
 description = "Build AI Gateway"
 depends = ["install"]
 tools = { node = "lts" }
-run = "tsc -p tsconfig.json"
+run = "./node_modules/.bin/tsc -p tsconfig.json"
 
 [tasks.check]
 description = "Type-check AI Gateway"
 tools = { node = "lts" }
-run = "tsc -p tsconfig.json --noEmit"
+run = "./node_modules/.bin/tsc -p tsconfig.json --noEmit"
 
 [tasks.test]
 description = "Run the test suite"
 tools = { node = "lts" }
-run = "tsx --test test/**/*.test.ts"
+run = "./node_modules/.bin/tsx --test test/**/*.test.ts"
 
 [tasks.start]
 description = "Build and start AI Gateway in the background"
